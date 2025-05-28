@@ -1,0 +1,33 @@
+FROM python:3.11-slim
+
+USER root
+
+# Cài Java và thư viện cần thiết cho Spark và Oracle Instant Client
+RUN apt-get update && apt-get install -y \
+    openjdk-11-jdk-headless libaio1 curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy Oracle Instant Client vào image
+COPY instantclient_21_15 /opt/oracle/instantclient_21_15
+
+# Thiết lập biến môi trường Oracle Instant Client
+ENV ORACLE_HOME=/opt/oracle/instantclient_21_15
+ENV LD_LIBRARY_PATH=$ORACLE_HOME
+ENV PATH=$ORACLE_HOME:$PATH
+
+# Thiết lập biến môi trường Java cho Spark
+ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+ENV PATH=$JAVA_HOME/bin:$PATH
+
+# Cập nhật pip và cài các package Python cần thiết
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+RUN pip install --no-cache-dir pyspark cx_Oracle jupyterlab
+
+# Tạo user jovyan và set quyền
+RUN useradd -m jovyan && chown -R jovyan:jovyan /opt/oracle
+
+USER jovyan
+
+WORKDIR /home/jovyan
+
+CMD ["jupyter", "lab", "--ip=0.0.0.0", "--no-browser", "--allow-root"]
